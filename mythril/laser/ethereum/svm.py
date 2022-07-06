@@ -270,6 +270,7 @@ class LaserEVM:
             hook()
 
         for global_state in self.strategy:
+
             if create and self._check_create_termination():
                 log.debug("Hit create timeout, returning.")
                 return final_states + [global_state] if track_gas else None
@@ -277,13 +278,11 @@ class LaserEVM:
             if not create and self._check_execution_termination():
                 log.debug("Hit execution timeout, returning.")
                 return final_states + [global_state] if track_gas else None
-
             try:
                 new_states, op_code = self.execute_state(global_state)
             except NotImplementedError:
                 log.debug("Encountered unimplemented instruction")
                 continue
-
             if args.sparse_pruning is False:
                 new_states = [
                     state
@@ -381,6 +380,13 @@ class LaserEVM:
             ).evaluate(global_state)
 
         except VmException as e:
+            for hook in self._transaction_end_hooks:
+                hook(
+                    global_state,
+                    global_state.current_transaction,
+                    None,
+                    False,
+                )
             new_global_states = self.handle_vm_exception(global_state, op_code, str(e))
 
         except TransactionStartSignal as start_signal:
